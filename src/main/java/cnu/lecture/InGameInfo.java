@@ -25,4 +25,5 @@ public class InGameInfo {
 
     @Getter @Setter
     private Participant[] participants;
+    
 }
