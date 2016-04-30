@@ -24,65 +24,66 @@ import java.util.HashMap;
  * Created by tchi on 2016. 4. 25..
  */
 public class InGameSummonerQuerier {
-    private final String apiKey;
-    private final GameParticipantListener listener;
+	private final String apiKey;
+	private final GameParticipantListener listener;
 
-    public InGameSummonerQuerier(String apiKey, GameParticipantListener listener) {
-        this.apiKey = apiKey;
-        this.listener = listener;
-    }
+	public InGameSummonerQuerier(String apiKey, GameParticipantListener listener) {
+		this.apiKey = apiKey;
+		this.listener = listener;
+	}
 
-    public String queryGameKey(String summonerName) throws IOException {
-        HttpClient client = HttpClientBuilder.create().build();
+	public String queryGameKey(String summonerName) throws IOException {
 
-        String summonerId = summonerRequest(summonerName, client);
+		String summonerId = summonerRequest(summonerName);
 
-        InGameInfo gameInfo = inGameInfoRequest(client, summonerId);
-        
+		InGameInfo gameInfo = inGameInfoRequest(summonerId);
+
 		Arrays.asList(gameInfo.getParticipants()).forEach((InGameInfo.Participant participant) -> {
 			listener.player(participant.getSummonerName());
 		});
 
-        return gameInfo.getObservers().getEncryptionKey();
-    }
+		return gameInfo.getObservers().getEncryptionKey();
+	}
 
-	public InGameInfo inGameInfoRequest(HttpClient client, String summonerId)
-			throws IOException, ClientProtocolException {
+	public InGameInfo inGameInfoRequest(String summonerId) throws IOException, ClientProtocolException {
+		HttpClient client = HttpClientBuilder.create().build();
 		HttpUriRequest inGameRequest = buildObserverHttpRequest(summonerId);
-        HttpResponse inGameResponse = client.execute(inGameRequest);
-        Gson inGameGson = new Gson();
-        InGameInfo gameInfo = inGameGson.fromJson(new JsonReader(new InputStreamReader(inGameResponse.getEntity().getContent())), InGameInfo.class);
+		HttpResponse inGameResponse = client.execute(inGameRequest);
+		Gson inGameGson = new Gson();
+		InGameInfo gameInfo = inGameGson.fromJson(
+				new JsonReader(new InputStreamReader(inGameResponse.getEntity().getContent())), InGameInfo.class);
 		return gameInfo;
 	}
 
-	public String summonerRequest(String summonerName, HttpClient client)
+	public String summonerRequest(String summonerName)
 			throws UnsupportedEncodingException, IOException, ClientProtocolException {
+		HttpClient client = HttpClientBuilder.create().build();
 		HttpUriRequest summonerRequest = buildApiHttpRequest(summonerName);
-        HttpResponse summonerResponse = client.execute(summonerRequest);
-        Gson summonerInfoGson = new Gson();
-        Type mapType = new TypeToken<HashMap<String, SummonerInfo>>(){}.getType();
-        HashMap<String, SummonerInfo> entries = summonerInfoGson.fromJson(new JsonReader(new InputStreamReader(summonerResponse.getEntity().getContent())), mapType);
-        String summonerId = entries.get(summonerName).getId();
+		HttpResponse summonerResponse = client.execute(summonerRequest);
+		Gson summonerInfoGson = new Gson();
+		Type mapType = new TypeToken<HashMap<String, SummonerInfo>>() {
+		}.getType();
+		HashMap<String, SummonerInfo> entries = summonerInfoGson
+				.fromJson(new JsonReader(new InputStreamReader(summonerResponse.getEntity().getContent())), mapType);
+		String summonerId = entries.get(summonerName).getId();
 		return summonerId;
 	}
 
-    private HttpUriRequest buildApiHttpRequest(String summonerName) throws UnsupportedEncodingException {
-        String url = mergeWithApiKey(new StringBuilder()
-                .append("https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/")
-                .append(URLEncoder.encode(summonerName, "UTF-8")))
-                .toString();
-        return new HttpGet(url);
-    }
+	private HttpUriRequest buildApiHttpRequest(String summonerName) throws UnsupportedEncodingException {
+		String url = mergeWithApiKey(
+				new StringBuilder().append("https://kr.api.pvp.net/api/lol/kr/v1.4/summoner/by-name/")
+						.append(URLEncoder.encode(summonerName, "UTF-8"))).toString();
+		return new HttpGet(url);
+	}
 
-    private HttpUriRequest buildObserverHttpRequest(String id) {
-        String url = mergeWithApiKey(new StringBuilder()
-                .append("https://kr.api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/KR/")
-                .append(id))
-                .toString();
-        return new HttpGet(url);
-    }
+	private HttpUriRequest buildObserverHttpRequest(String id) {
+		String url = mergeWithApiKey(new StringBuilder()
+				.append("https://kr.api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/KR/").append(id))
+						.toString();
+		return new HttpGet(url);
+	}
 
-    private StringBuilder mergeWithApiKey(StringBuilder builder) {
-        return builder.append("?api_key=").append(apiKey);
-    }
+	private StringBuilder mergeWithApiKey(StringBuilder builder) {
+		return builder.append("?api_key=").append(apiKey);
+	}
 }
